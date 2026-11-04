@@ -77,10 +77,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // 브라우저가 팝업을 차단한 경우 안내 문구 출력
       if (errorCode === "auth/popup-blocked") {
         toast.error("브라우저가 로그인 팝업을 막았어요. 팝업을 허용한 뒤 다시 눌러 주세요.");
+      } else if (errorCode === "auth/operation-not-allowed") {
+        toast.error("Firebase 콘솔에서 Google 로그인을 사용 설정해 주세요.");
+      } else if (errorCode === "auth/unauthorized-domain") {
+        toast.error("Firebase 콘솔 승인된 도메인에 현재 주소를 추가해 주세요.");
       } else {
-        // 그 외 일반 로그인 실패 오류 알림
+        // 그 외 일반 로그인 실패 오류 알림 (상세 메시지 포함)
         console.error("구글 로그인 실패:", err);
-        toast.error("로그인하지 못했어요. 잠시 후 다시 시도해 주세요.");
+        const errorMsg = (err as { message?: string })?.message;
+        toast.error(errorMsg ? `로그인 실패: ${errorMsg}` : "로그인하지 못했어요. 잠시 후 다시 시도해 주세요.");
       }
     } finally {
       // 팝업 진행 플래그 해제

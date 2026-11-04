@@ -38,6 +38,7 @@
 - 9주차 완료 — Firebase 연동, TanStack Query 캐싱 도입, Firestore(users/anonymous/links) 링크 페칭 및 로딩 상태 구현
 - 10주차 완료 — Firestore 실데이터 연동, 인라인 링크 수정 폼(EditLinkForm), 삭제 확인 모달(DeleteLinkDialog), 마지막 수정 시각 표시
 - 11주차 완료 — 구글 로그인 연동(Firebase Auth), 사용자별 users/{uid} 분리, 프로필 수정 다이얼로그(ProfileEditDialog, writeBatch), 헤더 탭 및 프로필 메뉴, 랜딩 페이지 구현
+- 12주차 완료 — /[displayName] 동적 라우팅 공개 페이지, 서버 사전 페칭(SSR), 404 안내 페이지(ProfileNotFound), Firestore 보안 규칙(firestore.rules) 작성 완료
 
 <!-- 아래 BEGIN~END 블록은 Next.js 가 관리한다. 이 위에만 쓸 것 -->
 

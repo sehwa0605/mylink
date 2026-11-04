@@ -24,8 +24,8 @@ import { useLinkForm } from "@/components/link/useLinkForm";
 import { toast } from "sonner";
 // 링크 데이터 타입 정의 임포트
 import type { Link } from "@/lib/types";
-// 플러스 아이콘 임포트
-import { PlusIcon } from "lucide-react";
+// 플러스 아이콘 및 로딩 스피너 아이콘 임포트
+import { PlusIcon, Loader2 } from "lucide-react";
 
 // AddLinkDialog 컴포넌트 속성 인터페이스 정의
 export interface AddLinkDialogProps {
@@ -39,7 +39,7 @@ export interface AddLinkDialogProps {
   trigger?: React.ReactElement;
 }
 
-// 링크 추가 다이얼로그 모달 컴포넌트
+// 링크 추가 다이얼로그 모달 컴포넌트 (가이드 9주차: 저장 중 창 닫힘 방지 및 스피너 연동)
 export function AddLinkDialog({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
@@ -48,27 +48,13 @@ export function AddLinkDialog({
 }: AddLinkDialogProps) {
   // 내부에서 자체 제어하기 위한 열림 상태
   const [internalOpen, setInternalOpen] = useState(false);
+  // 서버 저장 실패 시 노출할 폼 전역 에러 메시지 상태
+  const [serverError, setServerError] = useState<string | undefined>();
 
   // 외부 제어 여부 확인 (props로 전달받았는지)
   const isControlled = controlledOpen !== undefined;
   // 실제 현재 열림 상태값 (외부 제어 우선)
   const isOpen = isControlled ? controlledOpen : internalOpen;
-
-  // 열림/닫힘 상태 변경 통합 핸들러
-  const handleOpenChange = (nextOpen: boolean) => {
-    // 닫힐 때 폼 입력값 및 에러 상태 초기화
-    if (!nextOpen) {
-      reset();
-    }
-    // 외부 핸들러가 있으면 호출
-    if (controlledOnOpenChange) {
-      controlledOnOpenChange(nextOpen);
-    }
-    // 내부 상태 갱신
-    if (!isControlled) {
-      setInternalOpen(nextOpen);
-    }
-  };
 
   // 공통 링크 폼 훅 사용
   const {
@@ -83,19 +69,52 @@ export function AddLinkDialog({
     handleSubmit,
   } = useLinkForm();
 
+  // 열림/닫힘 상태 변경 통합 핸들러
+  const handleOpenChange = (nextOpen: boolean) => {
+    // 저장 중일 때는 바깥 클릭이나 Esc로 창이 닫히지 않도록 차단
+    if (isSubmitting) {
+      return;
+    }
+    // 닫힐 때 폼 입력값 및 에러 상태 초기화
+    if (!nextOpen) {
+      reset();
+      setServerError(undefined);
+    }
+    // 외부 핸들러가 있으면 호출
+    if (controlledOnOpenChange) {
+      controlledOnOpenChange(nextOpen);
+    }
+    // 내부 상태 갱신
+    if (!isControlled) {
+      setInternalOpen(nextOpen);
+    }
+  };
+
   // 폼 제출 이벤트 핸들러
   const onSubmit = async (e: React.FormEvent) => {
+    // 기존 서버 에러 초기화
+    setServerError(undefined);
+
     // 공통 handleSubmit 함수 실행
     const success = await handleSubmit(e, async (linkData) => {
-      // 부모 onAdd 콜백 호출
-      await onAdd(linkData);
-      // 추가 성공 토스트 알림 표시
-      toast.success("링크를 추가했어요");
-      // 다이얼로그 창 닫기
-      handleOpenChange(false);
+      try {
+        // 부모 onAdd 콜백 호출 (Firestore 저장 및 쿼리 무효화 완료 대기)
+        await onAdd(linkData);
+        // 추가 성공 토스트 알림 표시
+        toast.success("링크를 추가했어요");
+        // 저장 성공 시에만 다이얼로그 창 닫기
+        handleOpenChange(false);
+      } catch (error) {
+        // 저장 실패 원인 콘솔 출력 (권한 규칙 permission-denied 등)
+        console.error("링크 저장 실패 원인:", error);
+        // 화면에 노출할 실패 에러 메시지 설정 (입력값은 지우지 않고 유지)
+        setServerError("링크를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.");
+        // 실패 토스트 알림 표시
+        toast.error("링크를 저장하지 못했어요");
+      }
     });
 
-    // 실패한 경우(유효성 검사 미통과) 아무 동작 안 함
+    // 유효성 검사 실패 시 아무것도 하지 않음
     if (!success) {
       return;
     }
@@ -151,6 +170,7 @@ export function AddLinkDialog({
             <Input
               id="add-dialog-title"
               value={title}
+              disabled={isSubmitting}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="예: GitHub"
               autoFocus={true}
@@ -176,6 +196,7 @@ export function AddLinkDialog({
               id="add-dialog-url"
               type="text"
               inputMode="url"
+              disabled={isSubmitting}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="예: https://github.com/내아이디"
@@ -194,24 +215,39 @@ export function AddLinkDialog({
             )}
           </div>
 
+          {/* Firestore 저장 실패 안내 메시지 */}
+          {serverError && (
+            <p className="text-xs font-semibold text-destructive mt-2">
+              {serverError}
+            </p>
+          )}
+
           {/* 하단 버튼 액션 영역 */}
           <DialogFooter className="flex sm:justify-end gap-2 pt-2">
-            {/* 취소 버튼 (클릭 시 모달 닫기) */}
+            {/* 취소 버튼 (저장 중 비활성화) */}
             <Button
               type="button"
               variant="outline"
+              disabled={isSubmitting}
               onClick={() => handleOpenChange(false)}
               className="h-10 px-4 rounded-xl border-border hover:bg-muted font-medium cursor-pointer"
             >
               취소
             </Button>
-            {/* 추가하기 확인 버튼 */}
+            {/* 추가하기 확인 버튼 (저장 중 스피너 표시 및 텍스트 변경) */}
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="h-10 px-5 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 shadow transition-all cursor-pointer"
+              className="h-10 px-5 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 shadow transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              {isSubmitting ? "추가 중..." : "추가하기"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>추가 중…</span>
+                </>
+              ) : (
+                <span>추가하기</span>
+              )}
             </Button>
           </DialogFooter>
         </form>

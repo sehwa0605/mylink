@@ -10,8 +10,13 @@ import {
   deleteLink,
   type LinkInput,
 } from "@/lib/linksFirestore";
-// 링크 데이터 인터페이스 임포트
-import type { Link } from "@/lib/types";
+// Firestore 사용자 프로필 조회 및 수정 API 임포트
+import {
+  fetchUserProfile,
+  updateProfile,
+} from "@/lib/usersFirestore";
+// 링크 및 프로필 데이터 인터페이스 임포트
+import type { Link, UserProfile, ProfileUpdate } from "@/lib/types";
 
 // 쿼리 캐시 키 정의 객체: uid별, 화면별로 독립된 캐시 선반을 유지
 export const queryKeys = {
@@ -33,6 +38,18 @@ export function useLinksQuery(uid: string | undefined) {
     // Firestore에서 실제 링크 배열을 페칭하는 비동기 함수
     queryFn: () => fetchLinks(uid!),
     // uid가 유효한 문자열일 때만 쿼리 실행 활성화
+    enabled: !!uid,
+  });
+}
+
+// 특정 사용자(uid)의 프로필 정보를 Firestore에서 조회하는 React Query 훅 (11주차)
+export function useProfileQuery(uid: string | undefined) {
+  return useQuery<UserProfile | null>({
+    // uid를 포함한 프로필 캐시 키 지정
+    queryKey: queryKeys.profile(uid ?? ""),
+    // Firestore users/{uid} 문서 1회 조회 함수
+    queryFn: () => fetchUserProfile(uid!),
+    // uid가 있을 때만 쿼리 실행
     enabled: !!uid,
   });
 }
@@ -88,6 +105,53 @@ export function useDeleteLinkMutation(uid: string) {
     onSuccess: () => {
       return Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.links(uid) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.publicPageAll }),
+      ]);
+    },
+  });
+}
+
+// 특정 사용자(uid)의 프로필을 낙관적 업데이트(Optimistic Update)로 수정하는 Mutation 훅 (11주차)
+export function useUpdateProfileMutation(uid: string) {
+  // 전역 React Query 클라이언트 접근자 획득
+  const queryClient = useQueryClient();
+  // 프로필 캐시 키
+  const key = queryKeys.profile(uid);
+
+  return useMutation({
+    // Firestore writeBatch로 users/{uid} 및 users/{uid}/profile/main 동시 저장
+    mutationFn: (next: ProfileUpdate) => updateProfile(uid, next),
+    // 저장 요청 직전에 UI를 즉시 새 데이터로 반영 (낙관적 업데이트)
+    onMutate: async (next) => {
+      // 진행 중인 이전 프로필 쿼리가 있으면 취소하여 덮어쓰기 방지
+      await queryClient.cancelQueries({ queryKey: key });
+      // 롤백을 위해 수정 직전의 기존 프로필 캐시 백업
+      const previous = queryClient.getQueryData<UserProfile | null>(key);
+
+      // 캐시를 즉시 새로운 값(이름, 소개)으로 낙관적 갱신
+      queryClient.setQueryData<UserProfile | null>(key, (old) =>
+        old
+          ? {
+              ...old,
+              username: next.name,
+              bio: next.bio,
+            }
+          : old
+      );
+
+      // 롤백용 이전 데이터 컨텍스트 반환
+      return { previous };
+    },
+    // 저장 실패 시 이전 캐시 데이터로 원상 복구
+    onError: (_err, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(key, context.previous);
+      }
+    },
+    // 완료 시(성공/실패 무관) 최종 최신 데이터로 캐시 재동기화
+    onSettled: () => {
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: key }),
         queryClient.invalidateQueries({ queryKey: queryKeys.publicPageAll }),
       ]);
     },

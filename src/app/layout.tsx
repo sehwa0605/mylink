@@ -4,7 +4,7 @@ import "./globals.css";
 // 사이트 기본 메타데이터 설정 (브라우저 탭 제목 및 검색 설명)
 export const metadata: Metadata = {
   title: "양세화 | 프로필",
-  description: "저는 유기나노공학과 양세화입니다.",
+  description: "유기나노공학을 공부하며 아이디어를 코드로 만듭니다.",
 };
 
 // 최상위 레이아웃 컴포넌트: 모든 페이지를 감싸는 기본 뼈대

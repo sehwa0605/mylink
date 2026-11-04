@@ -6,6 +6,8 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 // TanStack Query 공급자 컴포넌트 임포트
 import { QueryProvider } from "@/components/providers/QueryProvider";
+// 전역 상단 고정 헤더 컴포넌트 임포트 (11주차)
+import { Header } from "@/components/layout/Header";
 
 // 사이트 기본 메타데이터 설정 (브라우저 탭 제목 및 검색 설명)
 export const metadata: Metadata = {
@@ -25,11 +27,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // 언어 설정을 한국어(ko)로 지정하고 translate="no"로 크롬 번역 팝업 방지
     <html lang="ko" translate="no" className="h-full antialiased font-sans">
       {/* 화면 전체 높이를 채우고 플렉스 박스로 배치 */}
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col bg-background text-foreground">
         {/* TanStack Query 전역 공급자로 앱 전체 감싸기 */}
         <QueryProvider>
-          {/* 각 페이지의 실제 콘텐츠 렌더링 */}
-          {children}
+          {/* 모든 페이지 최상단에 고정되는 헤더 바 */}
+          <Header />
+          {/* 각 페이지의 실제 콘텐츠 렌더링 영역 */}
+          <div className="flex-1 w-full">
+            {children}
+          </div>
         </QueryProvider>
         {/* 전역 알림을 표시하는 상단 중앙 토스트 컨테이너 */}
         <Toaster />

@@ -8,25 +8,35 @@ import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { LinkList } from "@/components/link/LinkList";
 // 링크 추가 모달 다이얼로그 컴포넌트 임포트
 import { AddLinkDialog } from "@/components/link/AddLinkDialog";
-// TanStack Query 링크 조회 및 추가 훅 임포트
-import { useLinksQuery, useAddLinkMutation } from "@/lib/queries";
+// TanStack Query 링크 조회, 추가, 수정, 삭제 훅 임포트
+import {
+  useLinksQuery,
+  useAddLinkMutation,
+  useUpdateLinkMutation,
+  useDeleteLinkMutation,
+} from "@/lib/queries";
 // shadcn Button 컴포넌트 임포트
 import { Button } from "@/components/ui/button";
 // shadcn Card 컴포넌트 임포트
 import { Card } from "@/components/ui/card";
-// 링크 데이터 타입 임포트
+// 링크 데이터 타입 및 입력 타입 임포트
 import type { Link } from "@/lib/types";
+import type { LinkInput } from "@/lib/linksFirestore";
 // 루시드 공유 및 체크 아이콘 임포트
 import { Share2, Check } from "lucide-react";
 
-// 메인 홈 화면 뷰 컴포넌트 (가이드 9주차: Firestore + TanStack Query 연동)
+// 메인 홈 화면 뷰 컴포넌트 (가이드 10주차: 링크 추가·수정·삭제 완전 연동)
 export function HomeView() {
-  // 9주차 임시 사용자 식별자: 로그인이 도입되는 11주차 전까지 "anonymous" 사용
+  // 사용자 식별자 (로그인 도입 전까지 임시 "anonymous" 사용)
   const uid = "anonymous";
   // Firestore 링크 목록 페칭 쿼리 (캐싱 및 로딩 상태 관리)
   const linksQuery = useLinksQuery(uid);
-  // Firestore 링크 추가 Mutation 훅 (성공 시 쿼리 캐시 자동 갱신)
+  // 새 링크 추가 Mutation 훅
   const addLinkMutation = useAddLinkMutation(uid);
+  // 링크 수정 Mutation 훅 (10주차)
+  const updateLinkMutation = useUpdateLinkMutation(uid);
+  // 링크 삭제 Mutation 훅 (10주차)
+  const deleteLinkMutation = useDeleteLinkMutation(uid);
   // 프로필 주소 클립보드 복사 여부 상태
   const [copied, setCopied] = useState(false);
 
@@ -39,6 +49,21 @@ export function HomeView() {
       // 정규화된 URL
       url: newLink.url,
     });
+  };
+
+  // 기존 링크를 수정하는 핸들러 함수 (10주차)
+  const handleUpdateLink = async (id: string, input: LinkInput) => {
+    // Firestore updateDoc 수정 및 캐시 무효화 완료 대기
+    await updateLinkMutation.mutateAsync({
+      id,
+      input,
+    });
+  };
+
+  // 기존 링크를 삭제하는 핸들러 함수 (10주차)
+  const handleDeleteLink = async (id: string) => {
+    // Firestore deleteDoc 삭제 및 캐시 무효화 완료 대기
+    await deleteLinkMutation.mutateAsync(id);
   };
 
   // 프로필 공유 버튼 클릭 핸들러 (모바일 네이티브 공유 및 데스크톱 클립보드 복사 폴백)
@@ -98,11 +123,14 @@ export function HomeView() {
           <AddLinkDialog onAdd={handleAddLink} />
         </div>
 
-        {/* 3. Firestore에서 불러온 링크 목록 렌더링 (isFetching 상태를 넘겨 로딩 스피너 및 흐림 효과 처리) */}
+        {/* 3. Firestore 링크 목록 렌더링 (ownerUid를 넘겨 수정/삭제 버튼 및 마지막 수정 시각 활성화) */}
         <div className="w-full mb-6">
           <LinkList
             links={linksQuery.data ?? []}
             loading={linksQuery.isFetching}
+            ownerUid={uid}
+            onUpdateLink={handleUpdateLink}
+            onDeleteLink={handleDeleteLink}
           />
         </div>
 

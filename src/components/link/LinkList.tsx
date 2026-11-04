@@ -1,8 +1,15 @@
-import React from "react";
+"use client";
+
+// 리액트 기본 훅 임포트
+import React, { useState } from "react";
 // 링크 데이터 인터페이스 임포트
 import type { Link } from "@/lib/types";
 // 개별 링크 버튼 컴포넌트 임포트
 import { LinkButton } from "./LinkButton";
+// 10주차 인라인 수정 폼 컴포넌트 임포트
+import { EditLinkForm } from "./EditLinkForm";
+// 10주차 삭제 확인 다이얼로그 모달 컴포넌트 임포트
+import { DeleteLinkDialog } from "./DeleteLinkDialog";
 // shadcn 빈 상태 표시 컴포넌트 임포트
 import {
   Empty,
@@ -18,7 +25,7 @@ import { Link2, Loader2 } from "lucide-react";
 // 클래스 유틸리티 함수 임포트
 import { cn } from "@/lib/utils";
 
-// LinkList 컴포넌트 Props 인터페이스 정의
+// LinkList 컴포넌트 Props 인터페이스 정의 (10주차: ownerUid 및 수정/삭제 핸들러 추가)
 export interface LinkListProps {
   // 렌더링할 링크 목록 배열
   links: Link[];
@@ -26,20 +33,34 @@ export interface LinkListProps {
   emptyMessage?: string;
   // Firestore 또는 쿼리 페칭 진행 여부 플래그
   loading?: boolean;
+  // 소유자 모드 식별자 (있을 경우 수정/삭제 버튼 및 폼 활성화)
+  ownerUid?: string;
+  // 링크 수정 실행 콜백 함수
+  onUpdateLink?: (id: string, input: { title: string; url: string }) => Promise<void> | void;
+  // 링크 삭제 실행 콜백 함수
+  onDeleteLink?: (id: string) => Promise<void> | void;
   // 링크 클릭 시 실행할 부모 콜백
   onLinkClick?: (link: Link) => void;
   // 컨테이너 추가 스타일 클래스명
   className?: string;
 }
 
-// 링크 버튼 세로 목록 컴포넌트 (가이드 9주차: 스피너 및 비활성화 로딩 상태 지원)
+// 링크 버튼 세로 목록 컴포넌트 (가이드 10주차: 인라인 수정 폼 및 삭제 확인 모달 연동)
 export function LinkList({
   links,
   emptyMessage = "아직 등록된 링크가 없어요.",
   loading = false,
+  ownerUid,
+  onUpdateLink,
+  onDeleteLink,
   onLinkClick,
   className,
 }: LinkListProps) {
+  // 현재 인라인 수정 폼이 활성화된 링크 ID 상태 (한 번에 하나만 수정 가능)
+  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
+  // 현재 삭제 확인 모달에 전달할 대상 링크 객체 상태
+  const [deletingLink, setDeletingLink] = useState<Link | null>(null);
+
   // 1. 데이터가 완전히 비어 있고 로딩 중일 때: 회색 자리표시(스켈레톤) 3줄 노출
   if (loading && (!links || links.length === 0)) {
     return (
@@ -80,7 +101,7 @@ export function LinkList({
     );
   }
 
-  // 3. 링크 데이터가 존재하는 경우 (로딩 중이면 흐리게 + 클릭 차단 처리)
+  // 3. 링크 데이터가 존재하는 경우 (수정/삭제 모달 및 리스트 렌더링)
   return (
     <div className={cn("flex flex-col gap-3 w-full", className)}>
       {/* 다시 불러오는 중일 때 상단에 작은 스피너 알림 표시 */}
@@ -99,14 +120,58 @@ export function LinkList({
         )}
       >
         {/* 링크 목록 순회 렌더링 */}
-        {links.map((link) => (
-          <LinkButton
-            key={link.id}
-            link={link}
-            onClick={() => onLinkClick?.(link)}
-          />
-        ))}
+        {links.map((link) => {
+          // 해당 링크가 현재 인라인 수정 중인 상태인지 확인
+          const isEditing = editingLinkId === link.id;
+
+          // 수정 중이면 카드를 EditLinkForm 인라인 수정 폼으로 교체 렌더링
+          if (isEditing) {
+            return (
+              <EditLinkForm
+                key={link.id}
+                link={link}
+                onSave={async (input) => {
+                  // 부모 수정 핸들러 실행
+                  await onUpdateLink?.(link.id, input);
+                  // 수정 모드 종료
+                  setEditingLinkId(null);
+                }}
+                onCancel={() => setEditingLinkId(null)}
+              />
+            );
+          }
+
+          // 기본 상태이면 LinkButton 렌더링 (ownerUid가 있으면 수정/삭제 버튼 포함)
+          return (
+            <LinkButton
+              key={link.id}
+              link={link}
+              ownerUid={ownerUid}
+              onEdit={() => setEditingLinkId(link.id)}
+              onDelete={() => setDeletingLink(link)}
+              onClick={() => onLinkClick?.(link)}
+            />
+          );
+        })}
       </div>
+
+      {/* 목록 전체가 공유하는 단일 삭제 확인 다이얼로그 모달 */}
+      <DeleteLinkDialog
+        link={deletingLink}
+        open={Boolean(deletingLink)}
+        onOpenChange={(open) => {
+          // 모달 닫힐 때 선택된 삭제 대상 링크 초기화
+          if (!open) {
+            setDeletingLink(null);
+          }
+        }}
+        onConfirmDelete={async (linkId) => {
+          // 부모 삭제 핸들러 실행
+          await onDeleteLink?.(linkId);
+          // 삭제 대상 링크 상태 초기화
+          setDeletingLink(null);
+        }}
+      />
     </div>
   );
 }

@@ -3,7 +3,13 @@
 // TanStack Query 핵심 훅 임포트
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 // Firestore 링크 관련 API 함수 및 입력 타입 임포트
-import { fetchLinks, saveLink, type LinkInput } from "@/lib/linksFirestore";
+import {
+  fetchLinks,
+  saveLink,
+  updateLink,
+  deleteLink,
+  type LinkInput,
+} from "@/lib/linksFirestore";
 // 링크 데이터 인터페이스 임포트
 import type { Link } from "@/lib/types";
 
@@ -45,6 +51,43 @@ export function useAddLinkMutation(uid: string) {
         // 해당 사용자의 링크 목록 캐시 무효화 및 자동 리페치
         queryClient.invalidateQueries({ queryKey: queryKeys.links(uid) }),
         // 공개 프로필 페이지 관련 캐시도 함께 무효화
+        queryClient.invalidateQueries({ queryKey: queryKeys.publicPageAll }),
+      ]);
+    },
+  });
+}
+
+// 특정 사용자(uid)의 기존 링크를 Firestore에서 수정하는 Mutation 훅 (10주차)
+export function useUpdateLinkMutation(uid: string) {
+  // 전역 React Query 클라이언트 접근자 획득
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    // 대상 링크 ID와 수정 데이터(title, url)로 Firestore updateDoc 호출
+    mutationFn: ({ id, input }: { id: string; input: LinkInput }) =>
+      updateLink(uid, id, input),
+    // 수정 완료 시 쿼리 캐시 무효화로 최신 데이터 재조회
+    onSuccess: () => {
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.links(uid) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.publicPageAll }),
+      ]);
+    },
+  });
+}
+
+// 특정 사용자(uid)의 기존 링크를 Firestore에서 영구 삭제하는 Mutation 훅 (10주차)
+export function useDeleteLinkMutation(uid: string) {
+  // 전역 React Query 클라이언트 접근자 획득
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    // 대상 링크 ID로 Firestore deleteDoc 호출
+    mutationFn: (linkId: string) => deleteLink(uid, linkId),
+    // 삭제 완료 시 쿼리 캐시 무효화로 목록에서 제거 반영
+    onSuccess: () => {
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.links(uid) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.publicPageAll }),
       ]);
     },

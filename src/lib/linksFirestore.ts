@@ -1,7 +1,10 @@
 // Firestore 데이터베이스 조작 메서드 및 타임스탬프 유틸리티 임포트
 import {
   collection,
+  doc,
   addDoc,
+  updateDoc,
+  deleteDoc,
   getDocs,
   query,
   orderBy,
@@ -13,7 +16,7 @@ import { db } from "@/lib/firebase";
 // 링크 데이터 인터페이스 임포트
 import type { Link } from "@/lib/types";
 
-// 새 링크 생성 시 필요한 입력 타입 정의 (id 및 서버 생성 필드 제외)
+// 새 링크 생성 및 수정 시 필요한 입력 타입 정의
 export type LinkInput = {
   // 링크 제목
   title: string;
@@ -25,6 +28,12 @@ export type LinkInput = {
 export function getLinksCollectionRef(uid: string) {
   // users/{uid}/links 경로 참조 반환
   return collection(db, "users", uid, "links");
+}
+
+// 특정 사용자(uid)의 개별 링크 문서 참조를 생성하는 도우미 함수
+export function getLinkDocRef(uid: string, linkId: string) {
+  // users/{uid}/links/{linkId} 경로 참조 반환
+  return doc(db, "users", uid, "links", linkId);
 }
 
 // 새 링크를 Firestore에 저장하는 함수 (9주차: 임시로 uid="anonymous" 사용)
@@ -50,6 +59,36 @@ export async function saveLink(uid: string, input: LinkInput): Promise<string> {
 
   // 생성된 문서의 고유 ID 반환
   return docRef.id;
+}
+
+// 기존 링크를 수정하는 함수 (10주차: createdAt은 유지하고 updatedAt만 갱신)
+export async function updateLink(
+  uid: string,
+  linkId: string,
+  input: LinkInput
+): Promise<void> {
+  // 대상 문서 참조 획득
+  const docRef = getLinkDocRef(uid, linkId);
+  // 현재 서버 시각 타임스탬프 획득
+  const now = serverTimestamp();
+
+  // Firestore 문서 필드 업데이트 실행
+  await updateDoc(docRef, {
+    // 수정된 링크 제목
+    title: input.title.trim(),
+    // 수정 및 정규화된 대상 URL
+    url: input.url.trim(),
+    // 마지막 수정 시각 갱신
+    updatedAt: now,
+  });
+}
+
+// 기존 링크를 삭제하는 함수 (10주차: Firestore 문서 영구 삭제)
+export async function deleteLink(uid: string, linkId: string): Promise<void> {
+  // 대상 문서 참조 획득
+  const docRef = getLinkDocRef(uid, linkId);
+  // Firestore 문서 삭제 실행
+  await deleteDoc(docRef);
 }
 
 // 특정 사용자(uid)의 모든 링크를 최신순(createdAt 내림차순)으로 조회하는 함수

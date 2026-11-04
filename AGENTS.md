@@ -34,6 +34,7 @@
 - 4주차 완료 — 스위치 네온 디자인 채택, 프로필 리디자인, docs/design.md 작성 완료
 - 5주차 완료 — 기획서(docs/PRD.md) 및 화면 개발용 샘플 데이터(src/lib/sampleLinks.ts) 작성 완료
 - 6주차 완료 — shadcn/ui 도입, 스위치 네온 토큰 매핑, 프로필 헤더 및 링크 목록 컴포넌트 분리 완성
+- 7주차 완료 — 링크 입력 검사(validateLink), 링크 추가 다이얼로그(AddLinkDialog) 및 sonner 토스트 구현 완료
 
 <!-- 아래 BEGIN~END 블록은 Next.js 가 관리한다. 이 위에만 쓸 것 -->
 

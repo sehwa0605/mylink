@@ -15,8 +15,10 @@ import {
   fetchUserProfile,
   updateProfile,
 } from "@/lib/usersFirestore";
-// 링크 및 프로필 데이터 인터페이스 임포트
-import type { Link, UserProfile, ProfileUpdate } from "@/lib/types";
+// 공개 페이지 통합 데이터 조회 함수 임포트
+import { fetchPublicPage } from "@/lib/publicPage";
+// 링크, 프로필 및 공개 페이지 데이터 인터페이스 임포트
+import type { Link, UserProfile, ProfileUpdate, PublicPage } from "@/lib/types";
 
 // 쿼리 캐시 키 정의 객체: uid별, 화면별로 독립된 캐시 선반을 유지
 export const queryKeys = {
@@ -155,5 +157,22 @@ export function useUpdateProfileMutation(uid: string) {
         queryClient.invalidateQueries({ queryKey: queryKeys.publicPageAll }),
       ]);
     },
+  });
+}
+
+// 공개 프로필 페이지(/{displayName}) 데이터를 조회하는 React Query 훅 (12주차)
+export function usePublicPageQuery(
+  displayName: string,
+  initialData?: PublicPage | null
+) {
+  return useQuery<PublicPage | null>({
+    // displayName별 고유 공개 페이지 캐시 키 지정
+    queryKey: queryKeys.publicPage(displayName),
+    // Firestore에서 사용자 및 링크 목록을 통합 조회하는 함수
+    queryFn: () => fetchPublicPage(displayName),
+    // 서버 컴포넌트(page.tsx)에서 미리 가져온 데이터가 있으면 초기값으로 즉시 렌더링 (로딩 없음)
+    initialData: initialData ?? undefined,
+    // displayName이 비어있지 않을 때만 실행
+    enabled: Boolean(displayName),
   });
 }

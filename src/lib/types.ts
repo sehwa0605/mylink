@@ -51,3 +51,13 @@ export interface AuthUser {
   // 구글 계정 실명
   username?: string | null;
 }
+
+// 공개 프로필 페이지 통합 데이터 인터페이스 (12주차)
+export interface PublicPage {
+  // 페이지 소유자의 Firebase UID
+  uid: string;
+  // 페이지 소유자의 프로필 정보
+  profile: UserProfile;
+  // 공개 페이지에 표시될 링크 목록
+  links: Link[];
+}

@@ -1,8 +1,13 @@
 // Firestore 문서 참조 및 배치 쓰기 함수 임포트
 import {
+  collection,
   doc,
   getDoc,
+  getDocs,
+  limit,
+  query,
   setDoc,
+  where,
   writeBatch,
   serverTimestamp,
 } from "firebase/firestore";
@@ -101,4 +106,39 @@ export async function updateProfile(
 
   // 배치 커밋 실행 (동시 반영)
   await batch.commit();
+}
+
+// 공개 주소명(displayName)으로 Firestore에서 사용자 프로필을 단건 조회하는 함수 (12주차)
+export async function findUserByDisplayName(
+  name: string
+): Promise<UserProfile | null> {
+  // users 컬렉션에서 displayName이 일치하는 문서 1건을 찾는 쿼리 생성
+  const q = query(
+    collection(db, "users"),
+    where("displayName", "==", name),
+    limit(1)
+  );
+
+  // Firestore 쿼리 실행
+  const snapshot = await getDocs(q);
+
+  // 일치하는 사용자가 없는 경우 null 반환
+  if (snapshot.empty) {
+    return null;
+  }
+
+  // 첫 번째 일치 문서 추출
+  const docSnap = snapshot.docs[0];
+  // 문서 데이터 추출
+  const data = docSnap.data();
+
+  // UserProfile 타입으로 매핑하여 반환
+  return {
+    uid: data.uid || docSnap.id,
+    displayName: data.displayName || name,
+    username: data.username || null,
+    email: data.email || null,
+    photoURL: data.photoURL || null,
+    bio: data.bio || DEFAULT_BIO,
+  };
 }

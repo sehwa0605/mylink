@@ -10,6 +10,7 @@ import {
   orderBy,
   serverTimestamp,
   Timestamp,
+  increment,
 } from "firebase/firestore";
 // 싱글톤 Firestore 인스턴스 임포트
 import { db } from "@/lib/firebase";
@@ -138,4 +139,17 @@ export async function fetchLinks(uid: string): Promise<Link[]> {
 
   // 최종 링크 목록 반환
   return links;
+}
+
+// 특정 링크의 클릭 수를 1 증가시키는 함수 (12/13주차)
+export async function incrementClickCount(
+  uid: string,
+  linkId: string
+): Promise<void> {
+  // 대상 링크 문서 참조 획득
+  const docRef = getLinkDocRef(uid, linkId);
+  // Firestore의 원자적 증가(increment) 함수를 이용해 클릭 수 1 증가 (동시성 보장)
+  await updateDoc(docRef, {
+    clickCount: increment(1),
+  });
 }

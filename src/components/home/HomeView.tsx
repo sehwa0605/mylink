@@ -1,15 +1,15 @@
 "use client";
 
-// 리액트 및 상태 관리 훅 임포트
+// 리액트 기본 훅 임포트
 import React, { useState } from "react";
 // 재사용 가능한 프로필 헤더 컴포넌트 임포트
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 // 재사용 가능한 링크 목록 컴포넌트 임포트
 import { LinkList } from "@/components/link/LinkList";
-// 7주차 링크 추가 모달 다이얼로그 컴포넌트 임포트
+// 링크 추가 모달 다이얼로그 컴포넌트 임포트
 import { AddLinkDialog } from "@/components/link/AddLinkDialog";
-// 5주차에 작성한 샘플 목업 링크 데이터 임포트
-import { sampleLinks } from "@/lib/sampleLinks";
+// TanStack Query 링크 조회 및 추가 훅 임포트
+import { useLinksQuery, useAddLinkMutation } from "@/lib/queries";
 // shadcn Button 컴포넌트 임포트
 import { Button } from "@/components/ui/button";
 // shadcn Card 컴포넌트 임포트
@@ -19,28 +19,26 @@ import type { Link } from "@/lib/types";
 // 루시드 공유 및 체크 아이콘 임포트
 import { Share2, Check } from "lucide-react";
 
-// 메인 홈 화면 뷰 컴포넌트 (가이드 4장 4-5 위치: src/components/home/HomeView.tsx)
+// 메인 홈 화면 뷰 컴포넌트 (가이드 9주차: Firestore + TanStack Query 연동)
 export function HomeView() {
-  // 화면 안에서 추가된 링크를 관리하기 위한 React State (초기값: sampleLinks)
-  const [links, setLinks] = useState<Link[]>(sampleLinks);
+  // 9주차 임시 사용자 식별자: 로그인이 도입되는 11주차 전까지 "anonymous" 사용
+  const uid = "anonymous";
+  // Firestore 링크 목록 페칭 쿼리 (캐싱 및 로딩 상태 관리)
+  const linksQuery = useLinksQuery(uid);
+  // Firestore 링크 추가 Mutation 훅 (성공 시 쿼리 캐시 자동 갱신)
+  const addLinkMutation = useAddLinkMutation(uid);
   // 프로필 주소 클립보드 복사 여부 상태
   const [copied, setCopied] = useState(false);
 
-  // 새 링크를 목록 맨 위에 추가하는 핸들러 (7주차: 화면 상태로만 유지)
-  const handleAddLink = (newLink: Omit<Link, "id">) => {
-    // 고유한 임시 ID와 생성 시각을 부여한 새 링크 객체 생성
-    const linkItem: Link = {
-      // 임시 고유 ID로 현재 밀리초 타임스탬프 활용
-      id: `link-${Date.now()}`,
-      // 입력받은 링크 제목
+  // 새 링크를 Firestore에 저장하는 핸들러 함수
+  const handleAddLink = async (newLink: Omit<Link, "id">) => {
+    // Firestore addDoc 저장 및 캐시 무효화 완료까지 대기
+    await addLinkMutation.mutateAsync({
+      // 링크 제목
       title: newLink.title,
-      // 정규화된 링크 URL
+      // 정규화된 URL
       url: newLink.url,
-      // 생성 시각 타임스탬프
-      createdAt: Date.now(),
-    };
-    // 기존 목록 맨 앞에 새 링크를 배치(최신순)
-    setLinks((prev) => [linkItem, ...prev]);
+    });
   };
 
   // 프로필 공유 버튼 클릭 핸들러 (모바일 네이티브 공유 및 데스크톱 클립보드 복사 폴백)
@@ -95,14 +93,17 @@ export function HomeView() {
           bio="유기나노공학을 공부하며 아이디어를 코드로 만듭니다."
         />
 
-        {/* 2. 7주차: 링크 추가 버튼 (모달 다이얼로그 호출) */}
+        {/* 2. 링크 추가 버튼 (모달 다이얼로그 호출 및 Firestore 저장 연동) */}
         <div className="w-full mb-4">
           <AddLinkDialog onAdd={handleAddLink} />
         </div>
 
-        {/* 3. 재사용 가능한 링크 버튼 세로 목록 컴포넌트 (상태 links 연동) */}
+        {/* 3. Firestore에서 불러온 링크 목록 렌더링 (isFetching 상태를 넘겨 로딩 스피너 및 흐림 효과 처리) */}
         <div className="w-full mb-6">
-          <LinkList links={links} />
+          <LinkList
+            links={linksQuery.data ?? []}
+            loading={linksQuery.isFetching}
+          />
         </div>
 
         {/* 4. shadcn Button 부품 기반의 프로필 공유 버튼 */}

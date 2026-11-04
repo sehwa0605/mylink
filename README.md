@@ -24,4 +24,4 @@ npm run dev
 브라우저에서 [http://localhost:3000](http://localhost:3000) 접속하여 확인할 수 있습니다.
 
 ## 만든 사람
-- **양세화** ([@ysh0605](https://github.com/ysh0605))
+- **양세화** ([@sehwa0605](https://github.com/sehwa0605))

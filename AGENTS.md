@@ -1,7 +1,7 @@
 # mylink — 에이전트 작업 규칙
 
 ## 사용자
-- 이름: 양세화 (Sehwa Yang) · GitHub: ysh0605 · 이메일: ysh8436@gmail.com
+- 이름: 양세화 (Sehwa Yang) · GitHub: sehwa0605 · 이메일: ysh8436@gmail.com
 - 코딩 완전 초보. 한국어로, 전문 용어는 풀어서 설명. 설명 길이: 짧게 핵심만
 - 이해 확인 질문(퀴즈): 붙이지 않음
 - 컴퓨터: Windows

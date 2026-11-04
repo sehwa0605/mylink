@@ -1,15 +1,8 @@
 // 6~7주차 화면 개발을 위한 목업(샘플) 링크 데이터
 // 9주차에 Firebase Firestore 가 연동되면 이 파일은 삭제됩니다.
+import type { Link } from "./types";
 
-export interface SampleLink {
-  id: string;
-  title: string;
-  url: string;
-  updatedAt?: number;
-  clickCount?: number;
-}
-
-export const sampleLinks: SampleLink[] = [
+export const sampleLinks: Link[] = [
   {
     id: "link-1",
     title: "GitHub 저장소",

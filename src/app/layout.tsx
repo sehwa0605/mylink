@@ -9,13 +9,23 @@ import { QueryProvider } from "@/components/providers/QueryProvider";
 // 전역 상단 고정 헤더 컴포넌트 임포트 (11주차)
 import { Header } from "@/components/layout/Header";
 
+// 배포 환경(Vercel) 또는 로컬 환경에 맞는 사이트 기준 URL 계산
+const siteUrl =
+  // 1순위: 직접 설정한 사이트 URL 환경 변수
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  // 2순위: Vercel 프로덕션 대표 도메인 (자동 제공)
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : // 3순위: Vercel 프리뷰/배포 도메인 (자동 제공)
+      process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : // 4순위: 로컬 개발 서버 기본 주소
+        "http://localhost:3000");
+
 // 사이트 전역 기본 메타데이터 설정 (SEO 최적화, 오픈 그래프 및 트위터 카드)
 export const metadata: Metadata = {
   // 상대 경로 메타데이터(OG 이미지, canonical 등)의 기준 URL 설정
-  metadataBase: new URL(
-    // 환경 변수에 배포 도메인이 있으면 사용하고 없으면 로컬 개발 서버 주소 사용
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-  ),
+  metadataBase: new URL(siteUrl),
   // 브라우저 탭 제목 및 하위 페이지 타이틀 템플릿 설정
   title: {
     // 하위 페이지에서 별도 타이틀을 지정하지 않았을 때의 기본 제목

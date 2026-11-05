@@ -5,6 +5,8 @@ import type { Link } from "@/lib/types";
 import { LinkIcon } from "./LinkIcon";
 // shadcn buttonVariants 및 Button 컴포넌트 임포트
 import { buttonVariants, Button } from "@/components/ui/button";
+// 클릭 수 커서 아이콘 임포트
+import { MousePointerClick } from "lucide-react";
 // 클래스 병합 유틸리티 함수 임포트
 import { cn } from "@/lib/utils";
 
@@ -112,20 +114,30 @@ export function LinkButton({
         )}
       </div>
 
-      {/* 주인 모드이고 마지막 수정 시각(updatedAt)이 존재하는 경우 하단에 날짜 표기 */}
-      {isOwner && link.updatedAt && (
-        <div className="text-right mt-1 px-1">
-          {/* 마지막 수정 시간 표시 (ko-KR 포맷) */}
-          <span className="text-[11px] text-muted-foreground">
-            마지막 수정{" "}
-            {/* 기계 판독 가능한 dateTime 속성 부여 */}
-            <time dateTime={new Date(link.updatedAt).toISOString()}>
-              {new Date(link.updatedAt).toLocaleString("ko-KR", {
-                dateStyle: "medium",
-                timeStyle: "short",
-              })}
-            </time>
-          </span>
+      {/* 주인 모드 하단 메타 정보 (왼쪽: 누적 클릭 수, 오른쪽: 마지막 수정 시각) */}
+      {isOwner && (
+        <div className="flex items-center justify-between mt-1 px-1 text-[11px] text-muted-foreground">
+          {/* 좌측 클릭 수 (커서 아이콘 + 숫자 + 스크린리더 안내) */}
+          <div className="flex items-center gap-1 font-medium">
+            <MousePointerClick className="size-3 text-muted-foreground" aria-hidden="true" />
+            <span className="sr-only">클릭 수</span>
+            <span>{(link.clickCount ?? 0).toLocaleString("ko-KR")}회 클릭</span>
+          </div>
+
+          {/* 우측 마지막 수정 시간 표시 (updatedAt 존재 시) */}
+          {link.updatedAt ? (
+            <div>
+              <span>마지막 수정 </span>
+              <time dateTime={new Date(link.updatedAt).toISOString()}>
+                {new Date(link.updatedAt).toLocaleString("ko-KR", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </time>
+            </div>
+          ) : (
+            <div />
+          )}
         </div>
       )}
     </div>

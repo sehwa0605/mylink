@@ -1,9 +1,5 @@
 // Next.js Open Graph 이미지 생성을 위한 ImageResponse 임포트
 import { ImageResponse } from "next/og";
-// 공개 프로필 및 링크 목록 조회 함수 임포트
-import { fetchPublicPage } from "@/lib/publicPage";
-// 기본 소개글 상수 임포트
-import { DEFAULT_BIO } from "@/lib/usersFirestore";
 
 // 동적 경로 오픈 그래프 이미지 대체 텍스트(alt) 설정
 export const alt = "mylink 공개 프로필";
@@ -37,8 +33,123 @@ const THEME = {
   border: "#E2E8F0",
 };
 
+// 기본 한 줄 소개 문구 상수
+const DEFAULT_BIO_TEXT = "한 줄 소개를 입력해주세요.";
+
+// Firestore REST API 응답에서 프로필과 링크 요약을 가볍게 조회하는 함수 (무거운 Firebase SDK 번들링 제거)
+async function fetchProfileForOg(handle: string): Promise<{
+  userName: string;
+  bio: string | null;
+  linkTitles: string[];
+  linkCount: number;
+} | null> {
+  // 환경 변수에서 Firebase 프로젝트 ID 확인
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  // 프로젝트 ID가 없으면 즉시 null 반환
+  if (!projectId) {
+    return null;
+  }
+
+  // Firestore REST API 기본 엔드포인트 구성
+  const baseUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
+
+  // 1.5초 타임아웃 컨트롤러 설정
+  const controller = new AbortController();
+  // 타임아웃 타이머 등록
+  const timer = setTimeout(() => controller.abort(), 1500);
+
+  try {
+    // 1. users 컬렉션에서 displayName이 일치하는 사용자 문서 1건 조회
+    const userRes = await fetch(`${baseUrl}:runQuery`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: "users" }],
+          where: {
+            fieldFilter: {
+              field: { fieldPath: "displayName" },
+              op: "EQUAL",
+              value: { stringValue: handle },
+            },
+          },
+          limit: 1,
+        },
+      }),
+      signal: controller.signal,
+      cache: "no-store",
+    });
+
+    // 응답 실패 시 null 반환
+    if (!userRes.ok) {
+      return null;
+    }
+
+    // JSON 파싱
+    const userRows = await userRes.json();
+    // 첫 번째 문서 결과 추출
+    const docObj = Array.isArray(userRows) ? userRows[0]?.document : undefined;
+    // 일치하는 문서가 없으면 null 반환
+    if (!docObj?.fields) {
+      return null;
+    }
+
+    // 문서 전체 경로에서 uid 추출
+    const docName: string = docObj.name || "";
+    // 경로 마지막 조각이 uid
+    const uid = docObj.fields.uid?.stringValue || docName.split("/").pop() || "";
+    // 사용자 이름 추출 (username 우선, 없으면 displayName)
+    const userName =
+      docObj.fields.username?.stringValue ||
+      docObj.fields.displayName?.stringValue ||
+      handle;
+    // 한 줄 소개 추출
+    const bio = docObj.fields.bio?.stringValue || null;
+
+    // 대표 링크 제목 보관 배열
+    let linkTitles: string[] = [];
+    // 전체 링크 개수 보관 변수
+    let linkCount = 0;
+
+    // 2. uid가 존재하면 해당 사용자의 links 서브컬렉션 목록 조회
+    if (uid) {
+      const linksRes = await fetch(`${baseUrl}/users/${uid}/links?pageSize=10`, {
+        signal: controller.signal,
+        cache: "no-store",
+      });
+
+      // 링크 목록 응답이 정상이면 제목 추출
+      if (linksRes.ok) {
+        const linksData = await linksRes.json();
+        const docs = Array.isArray(linksData?.documents)
+          ? linksData.documents
+          : [];
+        // 전체 링크 수 기록
+        linkCount = docs.length;
+        // 상위 3개 링크 제목 추출
+        linkTitles = docs
+          .slice(0, 3)
+          .map(
+            (d: { fields?: { title?: { stringValue?: string } } }) =>
+              d.fields?.title?.stringValue || ""
+          )
+          .filter(Boolean);
+      }
+    }
+
+    // 조회 결과 반환
+    return { userName, bio, linkTitles, linkCount };
+  } catch {
+    // 네트워크 또는 타임아웃 발생 시 null 반환
+    return null;
+  } finally {
+    // 타이머 해제
+    clearTimeout(timer);
+  }
+}
+
 // /[displayName] 동적 경로 전용 오픈 그래프 이미지 생성 함수 (정적 OG 이미지와 동일한 문법 및 히어로 디자인)
-export default async function Image({
+export default async function OpenGraphImage({
   params,
 }: {
   params: Promise<{ displayName: string }>;
@@ -51,7 +162,7 @@ export default async function Image({
   // 화면에 표시할 사용자 이름 기본값
   let userName = decodedHandle;
   // 화면에 표시할 고유 핸들 기본값
-  let handle = decodedHandle;
+  const handle = decodedHandle;
   // 화면에 표시할 한 줄 소개 기본값
   let userBio = `${decodedHandle}님의 모든 링크와 포트폴리오를 한 페이지에서 확인해보세요.`;
   // 등록된 링크 제목 요약 배열
@@ -59,45 +170,49 @@ export default async function Image({
   // 총 링크 개수
   let linkCount = 0;
 
-  try {
-    // Firestore 응답 지연으로 이미지가 안 열리는 현상을 방지하기 위해 2.5초 타임아웃 적용
-    const page = await Promise.race([
-      fetchPublicPage(decodedHandle),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
-    ]);
-
-    // 조회된 사용자 데이터가 있으면 실제 프로필 정보로 교체
-    if (page) {
-      // 실명(username) 우선 사용, 없으면 displayName 사용
-      userName = page.profile.username || page.profile.displayName || decodedHandle;
-      // 핸들명 적용
-      handle = page.profile.displayName || decodedHandle;
-      // 커스텀 소개글이 있으면 적용
-      if (page.profile.bio && page.profile.bio !== DEFAULT_BIO) {
-        userBio = page.profile.bio;
-      }
-      // 전체 링크 개수 저장
-      linkCount = page.links.length;
-      // 상위 3개 링크 제목 추출
-      linkTitles = page.links.slice(0, 3).map((link) => link.title);
+  // 가벼운 REST API로 사용자 프로필 및 링크 요약 조회
+  const profileData = await fetchProfileForOg(decodedHandle);
+  // 데이터가 존재하면 화면 표시값 갱신
+  if (profileData) {
+    // 사용자 실명/닉네임 반영
+    userName = profileData.userName;
+    // 기본 문구가 아닌 커스텀 소개글이 있으면 반영
+    if (profileData.bio && profileData.bio !== DEFAULT_BIO_TEXT) {
+      userBio = profileData.bio;
     }
-  } catch {
-    // 네트워크 오류 발생 시에도 이미지가 정상 생성되도록 기본값 유지
+    // 링크 제목 배열 반영
+    linkTitles = profileData.linkTitles;
+    // 총 링크 수 반영
+    linkCount = profileData.linkCount;
   }
 
   // 소개글이 너무 길면 한 줄에 예쁘게 들어오도록 55자 이내로 정리
   const safeBio = userBio.length > 55 ? `${userBio.slice(0, 55)}...` : userBio;
 
-  // 하단 다크 버튼에 표시할 문구 구성 (대표 링크 제목 또는 기본 안내)
+  // 상단 배지에 표시할 문구
+  const badgeText =
+    linkCount > 0
+      ? `아이디어를 코드로 연결하는 링크인바이오 · 링크 ${linkCount}개`
+      : "아이디어를 코드로 연결하는 링크인바이오";
+
+  // 헤드라인 1번째 줄 문구
+  const headlineLine1 = `${userName}님의 마이링크`;
+  // 헤드라인 2번째 줄 문구
+  const headlineLine2 = `@${handle}`;
+
+  // 하단 다크 버튼에 표시할 문구
   const ctaText =
     linkTitles.length > 0
       ? `${linkTitles.join(" · ")} 보러가기`
       : `@${handle} 프로필 보러가기`;
 
-  // ImageResponse를 통해 정적 OG 이미지와 통일된 히어로 레이아웃을 PNG로 반환
+  // 하단 보조 안내 문구
+  const footerCaption = `mylink / @${handle} 공개 프로필에서 모든 링크를 확인하세요`;
+
+  // ImageResponse를 통해 정적 OG 이미지와 동일한 히어로 레이아웃을 PNG로 반환
   return new ImageResponse(
     (
-      // 랜딩 페이지 히어로와 동일한 전체 배경 컨테이너 (중앙 정렬)
+      // 랜딩 페이지 전체 배경 컨테이너 (중앙 정렬)
       <div
         style={{
           // 전체 너비 100%
@@ -112,7 +227,7 @@ export default async function Image({
           alignItems: "center",
           // 세로 중앙 정렬
           justifyContent: "center",
-          // 정적 OG 이미지와 동일한 바탕색 (#F8F9FA)
+          // 랜딩 페이지와 동일한 바탕색 (#F8F9FA)
           backgroundColor: THEME.background,
           // 전체 안쪽 여백
           padding: "60px 80px",
@@ -122,7 +237,7 @@ export default async function Image({
           fontFamily: "sans-serif",
         }}
       >
-        {/* 상단 헤더 바 (정적 OG 이미지와 동일한 구조: 좌측 mylink 로고 + 우측 핸들 배지) */}
+        {/* 상단 헤더 바 (정적 OG 이미지와 동일한 구조) */}
         <div
           style={{
             // 상단 고정 위치
@@ -220,14 +335,14 @@ export default async function Image({
             </div>
           </div>
 
-          {/* 우측 헤더 공개 프로필 핸들 배지 */}
+          {/* 우측 헤더 공개 프로필 배지 */}
           <div
             style={{
               // 플렉스 가로 배치
               display: "flex",
               // 세로 중앙 정렬
               alignItems: "center",
-              // 도트와 텍스트 간격
+              // 간격
               gap: 8,
               // 안쪽 여백
               padding: "8px 18px",
@@ -245,12 +360,12 @@ export default async function Image({
               color: THEME.foreground,
             }}
           >
-            <span style={{ color: THEME.accent }}>{`@${handle}`}</span>
+            <span style={{ color: THEME.accent }}>{headlineLine2}</span>
             <span>공개 프로필</span>
           </div>
         </div>
 
-        {/* 중앙 히어로 섹션 본문 (정적 OG 이미지와 완벽히 통일된 중앙 정렬 레이아웃) */}
+        {/* 중앙 히어로 섹션 본문 (정적 OG 이미지와 동일한 구조) */}
         <div
           style={{
             // 플렉스 컨테이너
@@ -264,7 +379,7 @@ export default async function Image({
             // 헤더 높이만큼 아래로 중심 보정
             marginTop: 36,
             // 요소 간 간격
-            gap: 26,
+            gap: 28,
           }}
         >
           {/* 1. 상단 스위치 듀얼 네온 배지 */}
@@ -342,13 +457,11 @@ export default async function Image({
                 display: "flex",
               }}
             >
-              {linkCount > 0
-                ? `아이디어를 코드로 연결하는 링크인바이오 · 링크 ${linkCount}개`
-                : "아이디어를 코드로 연결하는 링크인바이오"}
+              {badgeText}
             </div>
           </div>
 
-          {/* 2. 대형 헤드라인 2줄 (사용자 이름 + 그라데이션 @핸들) 및 한 줄 소개 */}
+          {/* 2. 대형 헤드라인 2줄 및 부제 영역 */}
           <div
             style={{
               // 플렉스 세로 배치
@@ -363,7 +476,7 @@ export default async function Image({
               textAlign: "center",
             }}
           >
-            {/* 헤드라인 1번째 줄: 사용자 이름 */}
+            {/* 헤드라인 1번째 줄 */}
             <div
               style={{
                 // 대형 글자 크기
@@ -380,14 +493,14 @@ export default async function Image({
                 display: "flex",
               }}
             >
-              {`${userName}님의 마이링크`}
+              {headlineLine1}
             </div>
 
-            {/* 헤드라인 2번째 줄: 레드~네온블루 그라데이션 @displayName */}
+            {/* 헤드라인 2번째 줄 (from-primary via-red-500 to-accent 그라데이션 그대로 적용) */}
             <div
               style={{
                 // 대형 글자 크기
-                fontSize: 60,
+                fontSize: 64,
                 // 가장 굵은 글씨체
                 fontWeight: 900,
                 // 자간 축소
@@ -397,18 +510,18 @@ export default async function Image({
                 // 정적 OG 이미지와 동일한 레드~네온블루 그라데이션
                 backgroundImage:
                   "linear-gradient(90deg, #E60012 0%, #EF4444 50%, #00BDFF 100%)",
-                // 텍스트 클리핑
+                // 텍스트 영역에만 배경 클리핑
                 backgroundClip: "text",
-                // 투명 글자색으로 그라데이션 노출
+                // 글자 자체 색상을 투명하게 처리하여 그라데이션 노출
                 color: "transparent",
                 // 플렉스 표시
                 display: "flex",
               }}
             >
-              {`@${handle}`}
+              {headlineLine2}
             </div>
 
-            {/* 부제 문구: 사용자의 한 줄 소개(bio) */}
+            {/* 부제 문구 */}
             <div
               style={{
                 // 부제 글자 크기
@@ -427,7 +540,7 @@ export default async function Image({
             </div>
           </div>
 
-          {/* 3. 하단 다크 액션 버튼 모양 배지 및 안내 문구 (정적 OG 이미지와 통일) */}
+          {/* 3. 하단 다크 버튼 및 보조 문구 */}
           <div
             style={{
               // 플렉스 세로 배치
@@ -442,7 +555,7 @@ export default async function Image({
               marginTop: 8,
             }}
           >
-            {/* 대표 링크 목록을 보여주는 다크 콘솔 버튼 */}
+            {/* 대표 링크를 보여주는 대형 다크 버튼 */}
             <div
               style={{
                 // 플렉스 가로 배치
@@ -451,15 +564,15 @@ export default async function Image({
                 alignItems: "center",
                 // 가로 중앙 정렬
                 justifyContent: "center",
-                // 도트와 텍스트 간격
-                gap: 12,
+                // 아이콘과 텍스트 간격
+                gap: 14,
                 // 버튼 안쪽 여백
                 padding: "18px 44px",
                 // rounded-2xl 모서리
                 borderRadius: 20,
-                // 다크 배경 (#1A1D20)
+                // bg-foreground (#1A1D20) 배경
                 backgroundColor: THEME.foreground,
-                // 밝은 글자색 (#F8F9FA)
+                // text-background (#F8F9FA) 글자색
                 color: THEME.background,
                 // 글자 크기
                 fontSize: 22,
@@ -469,7 +582,7 @@ export default async function Image({
                 boxShadow: "0 10px 20px rgba(26, 29, 32, 0.14)",
               }}
             >
-              {/* 스위치 네온 포인트 도트 */}
+              {/* 네온 블루 도트 */}
               <div
                 style={{
                   // 가로 12px
@@ -478,7 +591,7 @@ export default async function Image({
                   height: 12,
                   // 원형
                   borderRadius: 999,
-                  // 네온 블루 색상
+                  // 네온 블루
                   backgroundColor: THEME.accent,
                   // 플렉스 표시
                   display: "flex",
@@ -500,7 +613,7 @@ export default async function Image({
                 display: "flex",
               }}
             >
-              {`mylink / @${handle} 공개 프로필에서 모든 링크를 확인하세요`}
+              {footerCaption}
             </div>
           </div>
         </div>

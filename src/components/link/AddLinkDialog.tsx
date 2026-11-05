@@ -22,6 +22,8 @@ import { Label } from "@/components/ui/label";
 import { useLinkForm } from "@/components/link/useLinkForm";
 // 추가 완료 알림 출력을 위한 sonner toast 임포트
 import { toast } from "sonner";
+// 클래스 병합 유틸리티 함수 임포트
+import { cn } from "@/lib/utils";
 // 링크 데이터 타입 정의 임포트
 import type { Link } from "@/lib/types";
 // 플러스 아이콘 및 로딩 스피너 아이콘 임포트
@@ -35,8 +37,12 @@ export interface AddLinkDialogProps {
   onOpenChange?: (open: boolean) => void;
   // 링크 추가 확정 시 실행되는 부모 콜백 함수
   onAdd: (link: Omit<Link, "id">) => Promise<void> | void;
-  // 커스텀 열기 트리거 요소 (생략 시 기본 [링크 추가] 버튼 제공)
+  // 커스텀 열기 트리거 요소 (생략 시 기본 버튼 제공)
   trigger?: React.ReactElement;
+  // 기본 트리거 버튼에 표시할 텍스트 문구 (생략 시 "링크 추가")
+  triggerLabel?: string;
+  // 기본 트리거 버튼의 색상·크기를 조절하는 추가 CSS 클래스 옵션
+  triggerClassName?: string;
 }
 
 // 링크 추가 다이얼로그 모달 컴포넌트 (가이드 9주차: 저장 중 창 닫힘 방지 및 스피너 연동)
@@ -45,6 +51,8 @@ export function AddLinkDialog({
   onOpenChange: controlledOnOpenChange,
   onAdd,
   trigger,
+  triggerLabel = "링크 추가",
+  triggerClassName,
 }: AddLinkDialogProps) {
   // 내부에서 자체 제어하기 위한 열림 상태
   const [internalOpen, setInternalOpen] = useState(false);
@@ -128,17 +136,22 @@ export function AddLinkDialog({
         // 사용자가 전달한 커스텀 트리거에 render 속성 매핑 (Base UI 규격)
         <DialogTrigger render={trigger} />
       ) : !isControlled ? (
-        // 기본 닌텐도 레드 스타일의 [링크 추가] 버튼을 render 속성으로 전달
+        // 기본 닌텐도 레드 스타일의 트리거 버튼을 render 속성으로 전달 (색상·크기 prop 병합)
         <DialogTrigger
           render={
             <Button
               type="button"
-              className="w-full h-12 bg-primary text-primary-foreground font-bold rounded-2xl shadow-md hover:bg-primary/90 hover:shadow-lg transition-all flex items-center justify-center gap-2 text-base cursor-pointer"
+              className={cn(
+                // 기본 버튼 스타일 (가로 꽉 차는 높이, 굵은 글씨, 그림자, 플러스 아이콘 정렬)
+                "w-full h-12 bg-primary text-primary-foreground font-bold rounded-2xl shadow-md hover:bg-primary/90 hover:shadow-lg transition-all flex items-center justify-center gap-2 text-base cursor-pointer",
+                // 외부에서 전달받은 버튼 색상·크기 커스텀 클래스 병합
+                triggerClassName
+              )}
             >
               {/* 플러스 아이콘 */}
               <PlusIcon className="w-5 h-5 stroke-[2.5]" />
               {/* 버튼 텍스트 */}
-              <span>링크 추가</span>
+              <span>{triggerLabel}</span>
             </Button>
           }
         />

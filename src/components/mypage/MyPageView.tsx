@@ -18,8 +18,8 @@ import {
 import { incrementClickCount } from "@/lib/linksFirestore";
 // 프로필 수정 다이얼로그 모달 컴포넌트 임포트
 import { ProfileEditDialog } from "@/components/profile/ProfileEditDialog";
-// 7주차 인라인 링크 추가 폼 컴포넌트 임포트
-import { AddLinkForm } from "@/components/link/AddLinkForm";
+// 링크 추가 다이얼로그 모달 컴포넌트 임포트
+import { AddLinkDialog } from "@/components/link/AddLinkDialog";
 // 링크 세로 목록 컴포넌트 임포트
 import { LinkList } from "@/components/link/LinkList";
 // shadcn Card 컴포넌트 임포트
@@ -50,7 +50,7 @@ export function MyPageView() {
   // 기존 링크 삭제 뮤테이션 훅
   const deleteLinkMutation = useDeleteLinkMutation(uid);
 
-  // 링크 추가 핸들러 (AddLinkForm과 연동)
+  // 링크 추가 핸들러 (AddLinkDialog와 연동)
   const handleAddLink = async (newLink: Omit<Link, "id">) => {
     await addLinkMutation.mutateAsync({
       title: newLink.title,
@@ -140,9 +140,14 @@ export function MyPageView() {
         </div>
       </Card>
 
-      {/* 2. 페이지 안에 바로 삽입되는 링크 추가 폼 (AddLinkForm) */}
+      {/* 2. 클릭 시 모달 팝업이 열리는 새 링크 추가 다이얼로그 버튼 (AddLinkDialog) */}
       <div className="w-full">
-        <AddLinkForm onAdd={handleAddLink} />
+        {/* 가로로 꽉 차는 [+ 새로운 링크 추가하기] 버튼을 눌러 다이얼로그 모달 열기 */}
+        <AddLinkDialog
+          onAdd={handleAddLink}
+          triggerLabel="새로운 링크 추가하기"
+          triggerClassName="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-bold text-base shadow-md hover:bg-primary/90 transition-all cursor-pointer"
+        />
       </div>
 
       {/* 3. 내 링크 목록 및 관리 섹션 (수정/삭제 지원) */}

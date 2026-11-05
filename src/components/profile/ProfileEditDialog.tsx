@@ -1,7 +1,7 @@
 "use client";
 
 // 리액트 기본 훅 임포트
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 // shadcn Dialog 컴포넌트 임포트
 import {
   Dialog,
@@ -65,9 +65,10 @@ export function ProfileEditDialog({
   // 낙관적 업데이트 Mutation 훅 연동
   const updateProfileMutation = useUpdateProfileMutation(profile?.uid || "");
 
-  // 모달이 열릴 때마다 기존 프로필 데이터로 입력창 초기화
-  useEffect(() => {
-    if (isOpen && profile) {
+  // 열림/닫힘 통합 핸들러 (모달이 열릴 때 기존 프로필 데이터로 입력창 초기화)
+  const handleOpenChange = (nextOpen: boolean) => {
+    // 창이 열리는 순간(nextOpen === true) 기존 프로필 데이터로 입력창 채우기
+    if (nextOpen && profile) {
       // 실명 또는 프로필 이름 세팅
       setName(profile.username || profile.displayName || "");
       // 소개글이 기본 안내문구이면 빈 칸으로 시작, 있으면 기존 글 세팅
@@ -76,10 +77,6 @@ export function ProfileEditDialog({
       // 에러 메시지 초기화
       setNameError(undefined);
     }
-  }, [isOpen, profile]);
-
-  // 열림/닫힘 통합 핸들러
-  const handleOpenChange = (nextOpen: boolean) => {
     if (controlledOnOpenChange) {
       controlledOnOpenChange(nextOpen);
     }

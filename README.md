@@ -84,3 +84,6 @@ npm run dev
 
 ## 만든 사람
 - **양세화** ([@sehwa0605](https://github.com/sehwa0605))
+
+## 라이선스
+[MIT](LICENSE)

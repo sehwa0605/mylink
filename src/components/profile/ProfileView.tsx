@@ -4,8 +4,10 @@
 import React from "react";
 // Next.js 라우팅용 Link 컴포넌트 임포트
 import Link from "next/link";
-// React Query 공개 페이지 조회 훅 임포트
-import { usePublicPageQuery } from "@/lib/queries";
+// React Query 클라이언트 훅 임포트
+import { useQueryClient } from "@tanstack/react-query";
+// React Query 공개 페이지 조회 훅 및 쿼리 키 임포트
+import { usePublicPageQuery, queryKeys } from "@/lib/queries";
 // 링크 클릭 수 증가 API 임포트
 import { incrementClickCount } from "@/lib/linksFirestore";
 // 기본 소개글 상수 임포트
@@ -33,6 +35,8 @@ export interface ProfileViewProps {
 
 // 누구나 접속할 수 있는 퍼블릭 사용자 프로필 화면 컴포넌트 (12주차)
 export function ProfileView({ handle, initialPage }: ProfileViewProps) {
+  // 전역 React Query 클라이언트 인스턴스 획득
+  const queryClient = useQueryClient();
   // React Query를 통해 공개 페이지 데이터 조회 (서버 초기 데이터 initialData 제공)
   const { data: page, isLoading } = usePublicPageQuery(handle, initialPage);
 
@@ -72,9 +76,14 @@ export function ProfileView({ handle, initialPage }: ProfileViewProps) {
   const handleLinkClick = (linkId: string) => {
     if (!page?.uid) return;
     // Firestore의 클릭 수 원자적 증가 함수를 비동기로 호출 (새 탭 이동을 방해하지 않음)
-    incrementClickCount(page.uid, linkId).catch((err) => {
-      console.error("클릭 수 증가 실패:", err);
-    });
+    incrementClickCount(page.uid, linkId)
+      .then(() => {
+        // 백그라운드 캐시 무효화로 통계·마이페이지 이동 시 즉시 최신 카운트 반영
+        queryClient.invalidateQueries({ queryKey: queryKeys.links(page.uid) });
+      })
+      .catch((err) => {
+        console.error("클릭 수 증가 실패:", err);
+      });
   };
 
   return (

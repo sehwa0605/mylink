@@ -4,15 +4,20 @@
 import React from "react";
 // Next.js Link 컴포넌트 임포트 (NextLink 별칭 사용)
 import NextLink from "next/link";
+// React Query 클라이언트 훅 임포트
+import { useQueryClient } from "@tanstack/react-query";
 // 사용자 상태 훅 임포트
 import { useUser } from "@/hooks/useUser";
-// TanStack Query 링크 조회 및 뮤테이션 훅 임포트
+// TanStack Query 링크 조회 및 뮤테이션 훅, 쿼리 키 임포트
 import {
   useLinksQuery,
   useAddLinkMutation,
   useUpdateLinkMutation,
   useDeleteLinkMutation,
+  queryKeys,
 } from "@/lib/queries";
+// 링크 클릭 수 증가 API 임포트
+import { incrementClickCount } from "@/lib/linksFirestore";
 // 링크 추가 모달 다이얼로그 컴포넌트 임포트
 import { AddLinkDialog } from "@/components/link/AddLinkDialog";
 // 링크 세로 목록 컴포넌트 임포트
@@ -31,6 +36,8 @@ import type { LinkInput } from "@/lib/linksFirestore";
 
 // 대시보드 화면 뷰 컴포넌트 (가이드 11주차: /dashboard)
 export function DashboardView() {
+  // 전역 React Query 클라이언트 획득
+  const queryClient = useQueryClient();
   // 현재 로그인 사용자 정보 및 경로 획득
   const { user, pagePath } = useUser();
   // 사용자의 UID
@@ -59,6 +66,21 @@ export function DashboardView() {
   // 링크 삭제 핸들러
   const handleDeleteLink = async (id: string) => {
     await deleteLinkMutation.mutateAsync(id);
+  };
+
+  // 링크 클릭 핸들러 (대시보드에서 클릭 시에도 조회수 증가 및 캐시 즉시 갱신)
+  const handleLinkClick = async (link: Link) => {
+    if (!uid) return;
+    try {
+      await incrementClickCount(uid, link.id);
+      // 화면에 즉시 반영되도록 캐시 무효화
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.links(uid) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.publicPageAll }),
+      ]);
+    } catch (err) {
+      console.error("클릭 수 증가 실패:", err);
+    }
   };
 
   return (
@@ -113,6 +135,7 @@ export function DashboardView() {
           ownerUid={uid}
           onUpdateLink={handleUpdateLink}
           onDeleteLink={handleDeleteLink}
+          onLinkClick={handleLinkClick}
           emptyMessage="아직 링크가 없어요. '링크 추가'를 눌러 보세요."
         />
       </Card>

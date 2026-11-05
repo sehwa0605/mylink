@@ -2,15 +2,20 @@
 
 // 리액트 기본 임포트
 import React from "react";
+// React Query 클라이언트 훅 임포트
+import { useQueryClient } from "@tanstack/react-query";
 // 사용자 상태 훅 임포트
 import { useUser } from "@/hooks/useUser";
-// TanStack Query 링크 조회 및 뮤테이션 훅 임포트
+// TanStack Query 링크 조회 및 뮤테이션 훅, 쿼리 키 임포트
 import {
   useLinksQuery,
   useAddLinkMutation,
   useUpdateLinkMutation,
   useDeleteLinkMutation,
+  queryKeys,
 } from "@/lib/queries";
+// 링크 클릭 수 증가 API 임포트
+import { incrementClickCount } from "@/lib/linksFirestore";
 // 프로필 수정 다이얼로그 모달 컴포넌트 임포트
 import { ProfileEditDialog } from "@/components/profile/ProfileEditDialog";
 // 7주차 인라인 링크 추가 폼 컴포넌트 임포트
@@ -31,6 +36,8 @@ import type { LinkInput } from "@/lib/linksFirestore";
 export function MyPageView() {
   // 현재 로그인된 사용자 정보와 프로필 가져오기
   const { user, profile, displayName } = useUser();
+  // 전역 React Query 클라이언트 인스턴스 획득
+  const queryClient = useQueryClient();
   // 사용자의 UID (없으면 빈 문자열)
   const uid = user?.uid || "";
 
@@ -59,6 +66,21 @@ export function MyPageView() {
   // 링크 삭제 핸들러
   const handleDeleteLink = async (id: string) => {
     await deleteLinkMutation.mutateAsync(id);
+  };
+
+  // 링크 클릭 핸들러 (마이페이지에서 직접 클릭 시에도 조회수 증가 및 캐시 즉시 갱신)
+  const handleLinkClick = async (link: Link) => {
+    if (!uid) return;
+    try {
+      await incrementClickCount(uid, link.id);
+      // 화면에 즉시 반영되도록 캐시 무효화
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.links(uid) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.publicPageAll }),
+      ]);
+    } catch (err) {
+      console.error("클릭 수 증가 실패:", err);
+    }
   };
 
   // 사용자 정의 소개글 작성 여부 확인
@@ -142,6 +164,7 @@ export function MyPageView() {
           ownerUid={uid}
           onUpdateLink={handleUpdateLink}
           onDeleteLink={handleDeleteLink}
+          onLinkClick={handleLinkClick}
           emptyMessage="아직 링크가 없어요. 위에서 추가해 보세요."
         />
       </div>

@@ -40,6 +40,7 @@
 - 11주차 완료 — 구글 로그인 연동(Firebase Auth), 사용자별 users/{uid} 분리, 프로필 수정 다이얼로그(ProfileEditDialog, writeBatch), 헤더 탭 및 프로필 메뉴, 랜딩 페이지 구현
 - 12주차 완료 — /[displayName] 동적 라우팅 공개 페이지, 서버 사전 페칭(SSR), 404 안내 페이지(ProfileNotFound), Firestore 보안 규칙(firestore.rules) 작성 완료
 - 13주차 완료 — 링크 클릭 수 집계(increment), 마이페이지 클릭 수 노출, recharts 기반 통계 대시보드(/stats) 차트 및 순위표 구현 완료
+- 최종 점검 (2026-11-05) — 타입 검사·린트·빌드 통과, 로그인·/stats·404 브라우저 확인 (남은 것: 콘솔 보안 규칙 대조·규칙 플레이그라운드·두 번째 계정 테스트)
 
 <!-- 아래 BEGIN~END 블록은 Next.js 가 관리한다. 이 위에만 쓸 것 -->
 

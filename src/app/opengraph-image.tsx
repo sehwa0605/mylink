@@ -38,7 +38,7 @@ const THEME = {
 };
 
 // 랜딩 페이지 히어로 섹션과 동일한 디자인의 정적(일반 경로) 오픈 그래프 이미지 생성 함수
-export default async function OpenGraphImage() {
+export default async function Image() {
   // ImageResponse를 통해 랜딩 페이지 히어로 섹션 레이아웃을 PNG 이미지로 반환
   return new ImageResponse(
     (

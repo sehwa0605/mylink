@@ -149,7 +149,7 @@ async function fetchProfileForOg(handle: string): Promise<{
 }
 
 // /[displayName] 동적 경로 전용 오픈 그래프 이미지 생성 함수 (정적 OG 이미지와 동일한 문법 및 히어로 디자인)
-export default async function OpenGraphImage({
+export default async function Image({
   params,
 }: {
   params: Promise<{ displayName: string }>;

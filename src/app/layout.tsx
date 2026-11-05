@@ -9,14 +9,87 @@ import { QueryProvider } from "@/components/providers/QueryProvider";
 // 전역 상단 고정 헤더 컴포넌트 임포트 (11주차)
 import { Header } from "@/components/layout/Header";
 
-// 사이트 기본 메타데이터 설정 (브라우저 탭 제목 및 검색 설명)
+// 사이트 전역 기본 메타데이터 설정 (SEO 최적화, 오픈 그래프 및 트위터 카드)
 export const metadata: Metadata = {
-  // 브라우저 탭 기본 타이틀
-  title: "양세화 | 프로필",
-  // 검색 엔진 및 소셜 공유용 소개글
-  description: "유기나노공학을 공부하며 아이디어를 코드로 만듭니다.",
+  // 상대 경로 메타데이터(OG 이미지, canonical 등)의 기준 URL 설정
+  metadataBase: new URL(
+    // 환경 변수에 배포 도메인이 있으면 사용하고 없으면 로컬 개발 서버 주소 사용
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+  ),
+  // 브라우저 탭 제목 및 하위 페이지 타이틀 템플릿 설정
+  title: {
+    // 하위 페이지에서 별도 타이틀을 지정하지 않았을 때의 기본 제목
+    default: "mylink — 나만의 스위치 네온 마이링크",
+    // 하위 페이지 타이틀 뒤에 자동으로 붙는 브랜드 접미사 템플릿
+    template: "%s | mylink",
+  },
+  // 검색 엔진에 노출될 서비스 기본 설명
+  description:
+    "GitHub, 블로그, 포트폴리오를 한 페이지에 모아 나만의 주소로 세상과 공유하는 링크인바이오 서비스",
+  // 웹 애플리케이션 이름 명시
+  applicationName: "mylink",
+  // 검색 엔진 최적화를 위한 핵심 키워드 목록
+  keywords: [
+    // 서비스 영문명
+    "mylink",
+    // 서비스 국문명
+    "마이링크",
+    // 카테고리 핵심 키워드
+    "링크인바이오",
+    // 영문 카테고리 키워드
+    "link in bio",
+    // 활용 목적 키워드 1
+    "포트폴리오",
+    // 활용 목적 키워드 2
+    "프로필 링크",
+    // 제작자 이름 키워드
+    "양세화",
+  ],
+  // 제작자 정보 명시
+  authors: [
+    // 제작자 이름 및 GitHub 주소
+    { name: "양세화 (Sehwa Yang)", url: "https://github.com/sehwa0605" },
+  ],
+  // 콘텐츠 생성자 명시
+  creator: "양세화 (Sehwa Yang)",
+  // 서비스 발행 주체 명시
+  publisher: "mylink",
+  // 검색 로봇 수집 및 링크 추적 허용 설정
+  robots: {
+    // 페이지 색인 허용
+    index: true,
+    // 페이지 내 링크 추적 허용
+    follow: true,
+  },
+  // 카카오톡·슬랙·페이스북 등 소셜 미디어 공유용 오픈 그래프 기본 설정
+  openGraph: {
+    // 웹사이트 타입 지정
+    type: "website",
+    // 한국어 로케일 지정
+    locale: "ko_KR",
+    // 기본 루트 경로
+    url: "/",
+    // 사이트 브랜드 이름
+    siteName: "mylink",
+    // 공유 카드 기본 제목
+    title: "mylink — 나만의 스위치 네온 마이링크",
+    // 공유 카드 기본 설명
+    description:
+      "GitHub, 블로그, 포트폴리오를 한 페이지에 모아 나만의 주소로 세상과 공유하는 링크인바이오 서비스",
+  },
+  // X(트위터) 공유 카드 기본 설정
+  twitter: {
+    // 대형 썸네일 요약 카드 형식 사용
+    card: "summary_large_image",
+    // 트위터 카드 기본 제목
+    title: "mylink — 나만의 스위치 네온 마이링크",
+    // 트위터 카드 기본 설명
+    description:
+      "GitHub, 블로그, 포트폴리오를 한 페이지에 모아 나만의 주소로 세상과 공유하는 링크인바이오 서비스",
+  },
   // 크롬 브라우저 영문 페이지 오판에 따른 자동 번역 팝업 방지 설정
   other: {
+    // 구글 자동 번역 비활성화 메타 태그
     google: "notranslate",
   },
 };

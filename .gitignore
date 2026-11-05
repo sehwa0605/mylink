@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 작업용 안내 문서 (저장소에 올리지 않음)
+mylink-친구용-셋업가이드.md
+mylink-최종점검-요청서.md

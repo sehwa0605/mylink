@@ -2,7 +2,8 @@
 
 > 양세화의 프로필과 링크를 한곳에 모아 공유하는 링크인바이오 서비스
 >
-> ⚠️ 아직 배포 전이라 **로컬 실행 전용**입니다. (배포는 14주차 예정)
+> 🔗 **배포 주소:** [https://mylink-eight-ivory.vercel.app](https://mylink-eight-ivory.vercel.app)
+> 👤 **공개 프로필 예시:** [https://mylink-eight-ivory.vercel.app/ysh8436](https://mylink-eight-ivory.vercel.app/ysh8436)
 
 ## 소개
 내 프로필과 여러 링크를 한 페이지에 모아 `내주소/{아이디}` 로 공유할 수 있는 나만의 웹 서비스입니다.

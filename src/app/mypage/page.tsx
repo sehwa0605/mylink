@@ -34,6 +34,13 @@ export const metadata: Metadata = {
     // 마이페이지 대표 경로
     canonical: "/mypage",
   },
+  // 로그인 필수 개인 관리 페이지이므로 검색 엔진 색인 및 링크 추적 차단
+  robots: {
+    // 검색 결과 색인 제외
+    index: false,
+    // 페이지 내 링크 추적 제외
+    follow: false,
+  },
   // 소셜 공유용 오픈 그래프 메타데이터
   openGraph: {
     // 공유 카드 제목
